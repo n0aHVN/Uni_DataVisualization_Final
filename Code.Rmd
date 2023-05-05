@@ -1,0 +1,919 @@
+---
+title: ''
+output: html_document
+date: "2022-10-25"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{=html}
+<h1 style="text-align:center">
+<b>Project nhóm 2</b>
+</h1>
+```
+```{r,include=FALSE}
+library(tidyverse)
+library(knitr)
+library(caret)
+library(dplyr)
+```
+
+# **Danh sách thành viên:**
+
+```{r,echo=FALSE}
+DSThanhVien <-data.frame("STT" = c(9,10,30),
+                         "Name" = c("Nguyễn Trí Dũng","Lê Minh Đăng","Nguyễn Khoa Quang Thắng"),
+                         "MSSV"=c("20133029","20133034","20133090"),
+                         stringsAsFactors = FALSE
+)
+
+kable(DSThanhVien)
+```
+
+# Phần 1: Giới thiệu:
+
+Điện thoại - Vật dụng không thể thiếu trong cuộc sống hiện nay khi mà toàn cầu đang tiến tới công nghệ hóa mọi thứ trong cuộc sống. Với những chức năng đa dạng và ngày càng hiện đại (như soạn văn bản Word, xem phim với độ phân giải cao,...), cộng thêm những chiếc điện thoại ngày nay có khả năng được những thiết bị khác (như máy ảnh, máy nhắn tin, máy ghi âm,...) thì việc càng nhiều người chọn điện thoại là vật bất ly thân là không thể chối cãi.
+
+Nhận thấy điều đó, nhóm 2 nhận thức được rằng việc người mua hàng lựa chọn cấu hình và giá cả khi mua điện thoại luôn được người tiêu dùng đặt lên hàng đầu. Do vậy, để hiểu rõ hơn về sự ảnh hưởng của những chức năng, cấu hình điện thoại tới giá cả, nhóm 2 chọn đề tài là: "Phân tích mô hình dự đoán giá điện thoại qua cấu hình máy".
+
+Và trong đề tài này, dataset được nhóm 2 thống nhất sử dụng có tên là **Mobile Phone Specifications and Prices** được tải xuống từ Kaggle và tác giả của dataset là **PRATIK** **GARAI.** Theo tác giả, dataset được lấy từ website Gadgets360 - là một trang báo của Ấn Độ được cập nhật các thông tin trên toàn thế giới, dữ liệu từ trang này được scrapped và cleaned bằng cách dùng [code ở đây](https://github.com/PratikGarai/Web-Scrapers/blob/master/BeautifulSoup/Ndtv_Scraper.py) và preprocessed [ở đây](https://github.com/PratikGarai/Mobile-Phone-Dataset-Analysis/blob/master/Additional/ndtv_analysis.ipynb)
+
+![](https://c.ndtvimg.com/gws/739/assets/4.svg?1597035633){width="515"}
+
+```{=html}
+<h1 style="font-size: 20px">
+<h1>
+```
+Đọc dữ liệu từ file data.csv:
+
+```{r}
+data<-read.csv("./data.csv")
+```
+
+Chuyển đổi Rupee (đơn vị tiền tệ của Ấn Độ) sang Dollar Mỹ
+
+```{r}
+data['Price'] = data['Price']*0.012
+```
+
+Xem thuộc tính và một vài dòng dữ liệu:
+
+```{r}
+glimpse(data)
+```
+
+Chuyển đổi tên của các thuộc tính để thuận tiện:
+
+```{r}
+colnames(data)[5]<-'Battery'
+colnames(data)[6]<-'Screensize'
+colnames(data)[10]<-'NumOfProcessor'
+colnames(data)[11]<-'Ram'
+colnames(data)[12]<-'InternalStorage'
+colnames(data)[13]<-'RearCamera'
+colnames(data)[14]<-'FrontCamera'
+colnames(data)[15]<-'OS'
+colnames(data)[16]<-'Wifi'
+colnames(data)[19]<-'NumOfSims'
+colnames(data)[20]<-'3G'
+colnames(data)[21]<-'4G'
+
+
+colnames(data)
+```
+
+Kiểm tra xem có dữ liệu nào bị rỗng không:
+
+```{r}
+any(is.na(data[1:nrow(data),]))
+
+```
+
+# Phần 2: Mô hình hoá dữ liệu:
+
+## Số lượng điện thoại:
+
+```{r, echo=FALSE}
+brand_numOfPhone<-as.data.frame(table(data$Brand))
+colnames(brand_numOfPhone)<-c("brand","numOfPhone")
+
+plot<-ggplot(data = brand_numOfPhone[0:35,]) +
+  geom_col(mapping = aes(y = brand, x=numOfPhone),fill = "#0099f9")+
+  labs(
+    x = "Hãng Điện Thoại",
+    y = "Số Lương")
+plot
+
+plot<-ggplot(data = brand_numOfPhone[36:76,]) +
+  geom_col(mapping = aes(y = brand, x=numOfPhone),fill = "#0099f9")+
+  labs(
+    x = "Hãng Điện Thoại",
+    y = "Số Lương")
+plot
+```
+
+## Thống kê lượng pin mỗi hãng:
+
+```{r}
+plot<-data %>%
+  mutate(data = fct_reorder(Brand, Battery, .fun='median')) %>%
+  ggplot(aes(y=reorder(Brand, Battery), x=Battery, fill=Brand)) + 
+    geom_boxplot() +
+    xlab("Brand") +
+    theme(legend.position="none",axis.text.y.left = element_text(size = 5))
+plot
+```
+
+## Thống kê kích thước màn hình
+
+```{r, echo=FALSE}
+plot<-data %>%
+  mutate(data = fct_reorder(Brand, Screensize, .fun='median')) %>%
+  ggplot(aes(y=reorder(Brand, Screensize), x=Screensize, fill=Brand)) + 
+    geom_boxplot() +
+    xlab("Brand") +
+    theme(legend.position="none")
+plot
+```
+
+```{r, echo=FALSE}
+data_temp<-as.data.frame(table(data$Touchscreen))
+pie(table(data$Touchscreen),main = "Thống kê lượng điện thoại có màn hình cảm ứng",labels = data_temp$Freq,col = rainbow(2))
+legend("topright",c("Yes","No"),fill = rainbow(2))
+```
+
+``` {)}
+```
+
+```{r, echo=FALSE}
+data1 <- data
+data1$InternalStorage<- as.character(data1$InternalStorage)
+
+
+ggplot() +
+  geom_bar(data = data1,mapping = aes(x = InternalStorage, fill =                    InternalStorage)) +
+  coord_polar() +
+  xlab('Internal Storage (GB)') +
+  ylab('Range') +
+  ggtitle(label = 'Statistic of Internal Storage') +
+
+  scale_fill_discrete(name = "Category IS")
+```
+
+```{r, echo=FALSE}
+data2 <- data.frame(
+  group = c("Yes","No"),
+  value = c((sum(data$Wifi == "Yes")-sum(data$Wifi == "No"))/sum(data$Wifi == "Yes")*100,sum(data$Wifi == "No")/sum(data$Wifi == "Yes")*100)
+)
+
+ggplot(data = data2, aes(x = "", y = value, fill = group)) +
+  geom_col(color = "white") +
+  geom_text(aes(label = (round(value, digits = 2))),
+            position = position_stack(vjust = 0.5)) +
+  coord_polar(theta = "y") +
+  theme_void() +
+  ggtitle(label = 'Wifi Statistic') +
+  scale_fill_discrete(name = "Category")
+```
+
+```{r, echo=FALSE}
+data3 <- data.frame(
+  group = c("Yes","No"),
+  value = c((sum(data$`4G` == "Yes")-sum(data$`4G` == "No"))/sum(data$`4G` == "Yes")*100,sum(data$`4G` == "No")/sum(data$`4G` == "Yes")*100)
+)
+
+ggplot(data = data3, aes(x = "", y = value, fill = group)) +
+  geom_col(color = "white") +
+  geom_text(aes(label = (round(value, digits = 2))),
+            position = position_stack(vjust = 0.5)) +
+  coord_polar(theta = "y") +
+  theme_void() +
+  labs(title = '4G/LITE Statistic', caption = "Many device don't support 4G/LITE") +
+  scale_fill_discrete(name = "Category")
+```
+
+# Phần 3: Kiểm định giả thuyết:
+
+Do dataset của nhóm có 3 loại biến là binary, continuous và nominal, nên phần kiểm định giả thuyết nhóm sẽ áp dụng phương pháp kiểm kê cho phù hợp với từng trường hợp.
+
+3 phương pháp kiểm kê mà nhóm sẽ sử dụng:
+
+-   Phân tích tương quan Pearson cho 2 biến continuous.
+
+-   One-way ANOVA F-test cho biến nominal và continuous.
+
+-   Phân tích tương quan Point Biserial cho biến binary và continous.
+
+## [***Biến phân loại:***]{.underline}
+
+### **Brand**
+
+Phương pháp: One-way ANOVA F-test.
+
+H~0~: Không có sự khác biệt về giá trung bình giữa các hãng điện thoại.
+
+H~1~: Có sự khác biệt về giá trung bình giữa các hãng điện thoại.
+
+```{r}
+new_data<-data
+new_data<-new_data[order(new_data$Brand),]
+new_brand = `as.factor`(new_data$Brand)
+new_brand<-as.numeric(new_brand)
+summary(aov(new_data$Price~new_brand))
+```
+
+Do p = 0.369 \> 0.05 =\> Không có sự khác biệt về giá trung bình giữa các hãng điện thoại.
+
+### Operating System
+
+Phương pháp: One-way ANOVA F-test.
+
+H~0~: Không có sự khác biệt về giá trung bình giữa điện thoại có hệ điều hành khác nhau.
+
+H~1~: Có sự khác biệt về giá trung bình giữa điện thoại có hệ điều hành khác nhau.
+
+```{r}
+new_data<-data
+new_data<-new_data[order(new_data$OS),]
+new_OS = as.numeric(as.factor(new_data$OS))
+summary(aov(new_data$Price~new_OS))
+```
+
+### GPS:
+
+Phương pháp: Phân tích tương quan Point Biserial.
+
+H~0~: Không có mối quan hệ tuyến tính giữa GPS và giá.
+
+H~1~: Có mối quan hệ tuyến tính nào giữa GPS và giá.
+
+```{r}
+new_data<-data
+new_data[new_data$GPS == "Yes",]['GPS']<-as.numeric(1)
+new_data[new_data$GPS == "No",]['GPS']<-as.numeric(0)
+new_data$GPS<-as.numeric(new_data$GPS)
+cor.test(new_data$Price,new_data$GPS)
+```
+
+cor != 0=\> Có mối quan hệ tuyến tính giữa GPS và giá.
+
+### 3G
+
+Phương pháp: Phân tích tương quan Point Biserial.
+
+H~0~: Không có mối quan hệ tuyến tính giữa 3G và giá.
+
+H~1~: Có mối quan hệ tuyến tính nào giữa 3G và giá.
+
+```{r}
+new_data<-data
+new_data[new_data$`3G` == "Yes",]['3G']<-as.integer(1)
+new_data[new_data$`3G` == "No",]['3G']<-as.integer(0)
+new_data$`3G`<-as.numeric(new_data$`3G`)
+cor.test(new_data$Price,new_data$`3G`)
+```
+
+cor xấp xỉ 0=\> Không mối quan hệ tuyến tính giữa 3G và giá.
+
+### 4G
+
+Phương pháp: Phân tích tương quan Point Biserial.
+
+H~0~: Không có mối quan hệ tuyến tính giữa 4G và giá.
+
+H~1~: Có mối quan hệ tuyến tính nào giữa 4G và giá.
+
+```{r}
+new_data<-data
+new_data[new_data$`4G` == "Yes",]['4G']<-as.integer(1)
+new_data[new_data$`4G` == "No",]['4G']<-as.integer(0)
+new_data$`4G`<-as.numeric(new_data$`4G`)
+cor.test(new_data$Price,new_data$`4G`)
+```
+
+cor != 0=\> Có mối quan hệ tuyến tính giữa 4G và giá.
+
+## [*Biến liên tục:*]{.underline}
+
+### Touchscreen
+
+Phương pháp: Phân tích tương quan Point Biserial.
+
+H~0~: Không có mối quan hệ tuyến tính giữa điện thoại có cảm ứng và không có cảm ứng.
+
+H~1~: Có mối quan hệ tuyến tính giữa điện thoại có cảm ứng và không có cảm ứng.
+
+```{r}
+new_data<-data
+new_data[new_data$Touchscreen == "Yes",]['Touchscreen']<-as.integer(1)
+new_data[new_data$Touchscreen == "No",]['Touchscreen']<-as.integer(0)
+new_data$Touchscreen<-as.numeric(new_data$Touchscreen)
+cor.test(new_data$Price,new_data$Touchscreen)
+```
+
+cor != 0=\> Có mối quan hệ tuyến tính giữa Touchscreen và giá.
+
+### Battery Capacity
+
+Phương pháp: Phân tích tương quan Pearson.
+
+H~0~: Không có mối quan hệ tuyến tính giữa battery capacity và giá.
+
+H~1~: Có mối quan hệ tuyến tính giữa battery capacity và giá.
+
+```{r}
+result<-cor.test(data$Price,data$Battery,method = 'pearson')
+print(result)
+```
+
+cor != 0=\> Có mối quan hệ tuyến tính giữa battery capacity và giá.
+
+### Screensize
+
+Phương pháp: Phân tích tương quan Pearson.
+
+H~0~: Không có mối quan hệ tuyến tính giữa screensize và giá.
+
+H~1~: Có mối quan hệ tuyến tính giữa screensize và giá.
+
+```{r}
+result<-cor.test(data$Price,data$Screensize,method = 'pearson')
+print(result)
+```
+
+cor != 0=\> Có mối quan hệ tuyến tính giữa screensize và giá.
+
+### Resolution.x
+
+Phương pháp: Phân tích tương quan Pearson.
+
+H~0~: Không có mối quan hệ tuyến tính giữa resolution.x và giá
+
+H~1~: Có mối quan hệ tuyến tính giữa resolution.x và giá
+
+```{r}
+result<-cor.test(data$Price,data$Resolution.x,method = 'pearson')
+print(result)
+
+```
+
+cor != 0=\> Có mối quan hệ tuyến tính giữa Resolution.x và giá.
+
+### Resolution.y
+
+Phương pháp: Phân tích tương quan Pearson.
+
+H~0~: Không có mối quan hệ tuyến tính giữa resolution.y và giá
+
+H~1~: Có mối quan hệ tuyến tính giữa resolution.y và giá
+
+```{r}
+result<-cor.test(data$Price,data$Resolution.y,method = 'pearson')
+print(result)
+```
+
+cor != 0=\> Có mối quan hệ tuyến tính giữa Resolution.y và giá.
+
+### NumOfProcessor
+
+Phương pháp: Phân tích tương quan Pearson.
+
+H~0~: Không có mối quan hệ tuyến tính giữa NumOfProcessor và giá
+
+H~1~: Có mối quan hệ tuyến tính giữa NumOfProcessor và giá
+
+```{r}
+result<-cor.test(data$Price,data$NumOfProcessor,method = 'pearson')
+print(result)
+```
+
+cor != 0=\> Có mối quan hệ tuyến tính giữa NumOfProcessor và giá.
+
+### RAM
+
+Phương pháp: Phân tích tương quan Pearson.
+
+H~0~: Không có mối quan hệ tuyến tính giữa ram và giá
+
+H~1~: Có mối quan hệ tuyến tính giữa ram và giá
+
+```{r}
+result<-cor.test(data$Price,data$Ram,method = 'pearson')
+print(result)
+```
+
+cor != 0=\> Có mối quan hệ tuyến tính giữa RAM và giá.
+
+### Internal storage
+
+Phương pháp: Phân tích tương quan Pearson.
+
+H~0~: Không có mối quan hệ tuyến tính giữa Internal storage và giá
+
+H~1~: Có mối quan hệ tuyến tính giữa Internal storage và giá
+
+```{r}
+result<-cor.test(data$InternalStorage,data$Price,method = 'pearson')
+print(result)
+```
+
+cor != 0=\> Có mối quan hệ tuyến tính giữa Internal storage và giá.
+
+### Rear Camera
+
+Phương pháp: Phân tích tương quan Pearson.
+
+H~0~: Không có mối quan hệ tuyến tính giữa Rear Camera và giá
+
+H~1~: Có mối quan hệ tuyến tính giữa Rear Camera và giá
+
+```{r}
+result<-cor.test(data$RearCamera,data$Price,method = 'pearson')
+print(result)
+```
+
+cor != 0=\> Có mối quan hệ tuyến tính giữa Rear Camera và giá.
+
+### Front camera
+
+Phương pháp: Phân tích tương quan Pearson.
+
+H~0~: Không có mối quan hệ tuyến tính giữa Front camera và giá
+
+H~1~: Có mối quan hệ tuyến tính giữa Front camera và giá
+
+```{r}
+result<-cor.test(data$FrontCamera,data$Price,method = 'pearson')
+print(result)
+```
+
+cor != 0=\> Có mối quan hệ tuyến tính giữa Front camera và giá.
+
+### NumOfSims
+
+Phương pháp: Phân tích tương quan Pearson.
+
+H~0~: Không có mối quan hệ tuyến tính giữa NumOfSims và giá
+
+H~1~: Có mối quan hệ tuyến tính giữa NumOfSims và giá
+
+```{r}
+result<-cor.test(data$Price,data$NumOfSims)
+print(result)
+```
+
+cor != 0=\> Có mối quan hệ tuyến tính giữa NumOfSims và giá.
+
+Wifi và Bluetooth:
+
+Do mẫu điện thoại không có wifi và bluetooth quá ít nên không thể kiểm định.
+
+# Phần 4: Mô hình hoá dữ liệu
+
+Chỉnh sửa lại data để phù hợp với hàm tuyến tính:
+
+```{r}
+new_data<-data
+#new_data$Model<-as.numeric(as.factor(new_data$Model))
+#Đổi biến Touchscreen về dạng số
+new_data[new_data$Touchscreen == "Yes",]$Touchscreen<-as.integer(1)
+new_data[new_data$Touchscreen == "No",]$Touchscreen<-as.integer(0)
+new_data$Touchscreen<-as.numeric(new_data$Touchscreen)
+#Đổi biến OS về dạng số
+new_data$OS = as.numeric(as.factor(new_data$OS))
+#Đổi biến Bluetooth về dạng số
+new_data[new_data$Bluetooth == "Yes",]['Bluetooth']<-as.integer(1)
+new_data[new_data$Bluetooth == "No",]['Bluetooth']<-as.integer(0)
+new_data$Bluetooth<-as.numeric(new_data$Bluetooth)
+#Đổi biến Wifi về dạng số
+new_data[new_data$Wifi == "Yes",]['Wifi']<-as.integer(1)
+new_data[new_data$Wifi == "No",]['Wifi']<-as.integer(0)
+new_data$Wifi<-as.numeric(new_data$Wifi)
+#Đổi biến GPS về dạng số
+new_data[new_data$GPS == "Yes",]['GPS']<-as.integer(1)
+new_data[new_data$GPS == "No",]['GPS']<-as.integer(0)
+new_data$GPS<-as.numeric(new_data$GPS)
+#Đổi biến 3G về dạng số
+new_data[new_data$`3G` == "Yes",]['3G']<-as.integer(1)
+new_data[new_data$`3G` == "No",]['3G']<-as.integer(0)
+new_data$`3G`<-as.numeric(new_data$`3G`)
+#Đổi biến 4G về dạng số
+new_data[new_data$`4G` == "Yes",]['4G']<-as.integer(1)
+new_data[new_data$`4G` == "No",]['4G']<-as.integer(0)
+new_data$`4G`<-as.numeric(new_data$`4G`)
+
+head(new_data,10)
+```
+
+Tạo ra bảng brand_numOfPhone để lưu số lượng điện thoại cho từng hãng:
+
+```{r, echo = FALSE}
+brand<-unique(data[order(data$Brand),]$Brand)
+numOfPhone<-c()
+
+for (i in 1:length(brand))
+{
+  numOfPhone<-append(numOfPhone,nrow(filter(data,data$Brand ==brand[i])))
+}
+
+brand_numOfPhone <-data.frame(brand,numOfPhone)
+brand_numOfPhone<-brand_numOfPhone%>%filter(numOfPhone>18)
+
+new_data<-new_data %>% filter(new_data$Brand%in%brand_numOfPhone$brand)
+new_data<-new_data[order(new_data$Brand),]
+head(brand_numOfPhone,10)
+```
+
+Cùng xem lại new_data sau khi chuyển đổi:
+
+```{r}
+head(new_data,10)
+```
+
+**Mô hình hồi qui tuyến tính cho tất cả hãng:**
+
+```{r}
+temp_data<-new_data
+temp_data$Brand<-as.numeric(as.factor(temp_data$Brand))
+rows <- nrow(temp_data)
+f <- 0.5
+upper_bound <- floor(f * rows) #lấy phần nguyên
+permuted_data <- temp_data[sample(rows), ]
+train_data <- permuted_data[1:upper_bound, ]
+
+
+train_data_lm <- lm(train_data$Price ~
+     train_data$Brand+
+     train_data$Battery+
+     train_data$Screensize+
+     train_data$Touchscreen+
+     train_data$Resolution.x+
+     train_data$Resolution.y+
+     train_data$NumOfProcessor+
+     train_data$Ram+
+     train_data$InternalStorage+
+     train_data$RearCamera+
+     train_data$FrontCamera+
+     train_data$OS+
+     train_data$Wifi+
+     train_data$Bluetooth+
+     train_data$GPS+
+     train_data$NumOfSims+
+     train_data$`3G`+
+     train_data$`4G`
+   ,data = train_data)
+summary(train_data_lm)
+```
+
+```{r}
+#
+repeated_hold_out = vector(length = 0)
+mse_train_rhd = vector(length = 0)
+mse_test_rhd = vector(length=0)
+
+suppressWarnings({
+  for (i in 1:30) {
+    # tạo tập train và test data theo tỉ lệ 5 train 5 test
+    rows <- nrow(new_data)
+    f <- 0.5
+    upper_bound <- floor(f * rows) #lấy phần nguyên
+    permuted_data <- new_data[sample(rows), ]
+    
+    train_data <- permuted_data[1:upper_bound, ]
+    test_data <- permuted_data[(upper_bound+1):rows, ]
+    
+    
+    #Model dự đoán cho tất cả điện thoại
+    
+    train_data$Brand <- as.numeric(as.factor(train_data$Brand))
+  
+    train_data_lm <- lm(train_data$Price ~
+       train_data$Brand+
+       train_data$Battery+
+       train_data$Screensize+
+       train_data$Touchscreen+
+       train_data$Resolution.x+
+       train_data$Resolution.y+
+       train_data$NumOfProcessor+
+       train_data$Ram+
+       train_data$InternalStorage+
+       train_data$RearCamera+
+       train_data$FrontCamera+
+       train_data$OS+
+       train_data$Wifi+
+       train_data$Bluetooth+
+       train_data$GPS+
+       train_data$NumOfSims+
+       train_data$`3G`+
+       train_data$`4G`
+     ,data = train_data)
+    
+    #
+    
+    test_data$Brand <- as.numeric(as.factor(test_data$Brand))
+  
+    #vector giá dự đoán trên train data
+    predicted.train_dat <- predict(train_data_lm, newdata = train_data)
+    #vector giá dự đoán trên test data
+    predicted.test_dat <- predict(train_data_lm, newdata = test_data)
+    
+    #vector error trên train data
+    delta_train <- predicted.train_dat - train_data$Price
+    #vector error trên test data
+    delta_test <- predicted.test_dat - test_data$Price
+    
+    #khoảng tin cậy cho mức tin cậy 95% trung bình delta
+    repeated_hold_out <- c(repeated_hold_out, unname(t.test(delta_test, conf.level =   0.95)[["estimate"]]))
+    
+    #squared erro train data
+    mse_train_rhd <- c(mse_train_rhd, mean(delta_train ^ 2))
+    #squared erro test data
+    mse_test_rhd <- c(mse_test_rhd, mean(delta_test ^ 2))
+    
+  }
+  result_data<-test_data
+  result_data<-result_data%>%mutate(PredictPrice = delta_test+result_data$Price,
+                                    Error = delta_test)
+  
+  head(result_data,15)[c('Name','Price','PredictPrice','Error')]
+})
+
+```
+
+Trung bình khoảng tin cậy của error:
+
+```{r}
+repeated_hold_out_mean = sum(repeated_hold_out) / 30
+repeated_hold_out_mean
+```
+
+Trung bình squared error train data:
+
+```{r}
+mse_train_rhd_mean = sum(mse_train_rhd) / 30
+mse_train_rhd_mean
+```
+
+Trung bình squared error test data:
+
+```{r}
+mse_test_rhd_mean = sum(mse_test_rhd) / 30
+mse_test_rhd_mean
+```
+
+**Mô hình hồi qui tuyến tính theo mỗi hãng:**
+
+```{r}
+fn_RegressionForEachBrand<-function(train_data,test_data){
+  #Sắp xếp lại theo Brand
+  test_data <- test_data[order(test_data$Brand),]
+  #result lưu trữ giá dự đoán
+  result<-data.frame(Name = test_data$Name,
+                     Brand = test_data$Brand,
+                     Price = test_data$Price,
+                     PredictedPrice=NA)
+  #lặp từng dòng
+  for (i in 1:nrow(test_data))
+  {
+    #Kiểm tra điều kiện
+    if (!test_data[i,]$Brand %in% train_data$Brand)
+    {
+      print(paste("Brand",test_data[i,]$Brand, "không tồn tại trong database!"))
+      next
+    }
+    else if (!test_data[i,]$OS %in% train_data$OS)
+    {
+      print(paste("OS",test_data[i,]$OS ,"không tồn tại trong database!"))
+      next
+    }
+    #Tạo model cho Brand ở hiện tại
+    regression_data <- train_data[train_data$Brand == test_data[i,]$Brand,]
+    regression <- lm(regression_data$Price ~
+     regression_data$Battery+
+     regression_data$Screensize+
+     regression_data$Touchscreen+
+     regression_data$Resolution.x+
+     regression_data$Resolution.y+
+     regression_data$NumOfProcessor+
+     regression_data$Ram+
+     regression_data$InternalStorage+
+     regression_data$RearCamera+
+     regression_data$FrontCamera+
+     regression_data$OS+
+     regression_data$Wifi+
+     regression_data$Bluetooth+
+     regression_data$GPS+
+     regression_data$NumOfSims+
+     regression_data$`3G`+
+     regression_data$`4G`
+   ,data = regression_data)
+    
+    regression_data<-test_data[i,]
+    #Đoán giá ở dòng hiện tại
+    result[i,]$PredictedPrice <- predict(regression,regression_data)
+
+  } 
+  return(result)
+}
+```
+
+```{r}
+repeated_hold_out2 = vector(length = 0)
+mse_train_rhd2 = vector(length = 0)
+mse_test_rhd2 = vector(length=0)
+for(i in 1:30)
+{
+  inTrain <- createDataPartition(y=new_data$Price, p=0.8, list=FALSE) 
+  train_data<-new_data[inTrain,]
+  test_data<-new_data[-inTrain,]
+  #Chay model
+  suppressWarnings({
+    train_result<-fn_RegressionForEachBrand(train_data,train_data)
+    test_result<-fn_RegressionForEachBrand(train_data,test_data)
+    train_result<-train_result%>%na.omit()
+    test_result<-test_result%>%na.omit()
+  })
+  
+  #vector error trên train data
+  delta_train <- train_result$PredictedPrice - train_result$Price
+  #vector error trên test data
+  delta_test <- test_result$PredictedPrice - test_result$Price
+  
+  #khoảng tin cậy cho mức tin cậy 95% trung bình delta
+  repeated_hold_out2 <- c(repeated_hold_out2, unname(t.test(delta_test, conf.level =   0.95)[["estimate"]]))
+  
+  #squared error train data
+  mse_train_rhd2 <- c(mse_train_rhd2, mean(delta_train ^ 2))
+  #squared error test data
+  mse_test_rhd2 <- c(mse_test_rhd2, mean(delta_test ^ 2))
+}
+head(test_result,10)
+head(train_result,10)
+```
+
+Trung bình khoảng tin cậy của error:
+
+```{r}
+repeated_hold_out_mean2 = sum(repeated_hold_out2) / 30
+repeated_hold_out_mean2
+```
+
+Trung bình squared error train data:
+
+```{r}
+mse_train_rhd_mean2 = sum(mse_train_rhd2) / 30
+mse_train_rhd_mean2
+```
+
+Trung bình squared error test data:
+
+```{r}
+mse_test_rhd_mean2 = sum(mse_test_rhd2) / 30
+mse_test_rhd_mean2
+```
+
+## Xây dựng mô hình k-NN:
+
+**One-hot encoding:**
+
+```{r}
+inTrain <- createDataPartition(y=new_data$Price, p=0.8, list=FALSE) 
+kNN_train_data<-new_data[inTrain,]
+kNN_test_data<-new_data[-inTrain,]
+
+
+#Thêm cột cho tập kNN_train_data theo 
+for (i in 1:nrow(brand_numOfPhone))
+{
+  #Lấy giá unique trong cột Brand rồi tạo cột mới theo Brand đó
+  new_column_name<-brand_numOfPhone[i,]$brand
+  #Gán tất cả giá trị của cột đó bằng 0
+  kNN_train_data[new_column_name]<-0
+}
+#Gán encoding cho tập kNN_train_data:
+for (i in 1:nrow(kNN_train_data))
+{
+  #Lấy Brand của cột đó
+  column_name<-kNN_train_data[i,]$Brand
+  #Gán giá trị 1 với cột có tên giống với column_name
+  kNN_train_data[i,column_name]<-1
+}
+kNN_train_data<-subset(kNN_train_data,select = -c(X,Name,Brand,Model))
+head(kNN_train_data,10)
+```
+
+```{r}
+#Thêm cột cho tập kNN_test_data theo 
+for (i in 1:nrow(brand_numOfPhone))
+{
+  #Lấy giá unique trong cột Brand rồi tạo cột mới theo Brand đó
+  new_column_name<-brand_numOfPhone[i,]$brand
+  #Gán tất cả giá trị của cột đó bằng 0
+  kNN_test_data[new_column_name]<-0
+}
+#Gán encoding cho tập kNN_test_data:
+for (i in 1:nrow(kNN_test_data))
+{
+  #Lấy Brand của cột đó
+  column_name<-kNN_test_data[i,]$Brand
+  #Gán giá trị 1 với cột có tên giống với column_name
+  kNN_test_data[i,column_name]<-1
+}
+kNN_store_name<-kNN_test_data$Name
+kNN_test_data<-subset(kNN_test_data,select = -c(X,Name,Brand,Model))
+
+head(kNN_test_data,10)
+
+```
+
+Xây dựng
+
+```{r}
+
+set.seed(1)
+#inTrain<-createDataPartition(kNNdata$Price,p=0.8,list=FALSE)
+#knn_training<-kNNdata[inTrain,]
+#knn_test<-kNNdata[-inTrain,]
+
+#knn_test<-as.data.frame(do.call(cbind, knn_test))
+#knn_training<-as.data.frame(do.call(cbind, knn_training))
+
+tuneGrid<-expand.grid(k=seq(1,59, by=2))
+
+kNNModel<-train(Price~.,data = kNN_train_data, method = 'knn', 
+                preProcess = c('center','scale'), 
+                trControl = trainControl(method ='repeatedcv',number=10,repeats = 5),
+                tuneGrid = tuneGrid)
+
+qqnorm(resid(kNNModel))
+qqline(resid(kNNModel))
+plot(fitted(kNNModel),resid(kNNModel),ylim=c(-50,50))
+```
+
+```{r}
+kNN_result<-data.frame(Name = kNN_store_name,
+                       Price = kNN_test_data$Price,
+                       PredictedPrice = predict(kNNModel,kNN_test_data))
+head(kNN_result,10)
+```
+
+Trung bình khoảng tin cậy model cho tất cả hãng:
+
+```{r}
+kNN_result<-data.frame(Price = kNN_test_data$Price,
+                       PredictedPrice = predict(kNNModel,kNN_test_data))
+kNN_result<-kNN_result%>%
+  mutate(error= PredictedPrice-Price,sq.error = error^2)
+unname(t.test(kNN_result$error, conf.level =   0.95)[["estimate"]])
+```
+
+Trung bình squared error test data:
+
+```{r}
+#kNNModel$results
+kNN_result<-data.frame(Price = kNN_test_data$Price,
+                       PredictedPrice = predict(kNNModel,kNN_test_data))
+#knn_rmse<-sqrt(mean(kNN_result$Price-kNN_result$PredictedPrice)^2)
+kNN_result<-kNN_result%>%
+  mutate(error= PredictedPrice-Price,sq.error = error^2)
+print(paste("Mean square error trên tập test:",mean(kNN_result$sq.error)))
+
+```
+
+Trung bình squared error train data:
+
+```{r}
+kNN_result<-data.frame(Price = kNN_train_data$Price,
+                       PredictedPrice = predict(kNNModel,kNN_train_data))
+kNN_result<-kNN_result%>%
+  mutate(error= PredictedPrice-Price,sq.error = error^2)
+print(paste("Mean square error trên tập training:",mean(kNN_result$sq.error)))
+```
+
+# Tổng hợp thực nghiệm
+
+Mô hình tuyến tính cho tất cả hãng:
+
+-   Trung bình khoảng tin cậy model: -1.55073
+
+-   Trung bình squared error train data: 11849.6
+
+-   Trung bình squared error test data: 45208.91
+
+25 mô hình với 25 hãng điện thoại:
+
+-   Trung bình khoảng tin cậy error: 209.1399
+
+-   Trung bình squared error train data: 4232.976
+
+-   Trung bình squared error test data: 60123598
+
+k-NN:
+
+-   Trung bình khoảng tin cậy model cho tất cả hãng: 1.939807
+
+-   Trung bình squared error train data: 21176.589278802
+
+-   Trung bình squared error test data: 4603.73618181174
