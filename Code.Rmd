@@ -151,6 +151,8 @@ plot<-data%>%
 plot
 ```
 
+Theo hãng:
+
 ```{r, echo=FALSE}
 plot<-data %>%
   mutate(data = fct_reorder(Brand, Screensize, .fun='median')) %>%
@@ -218,13 +220,40 @@ ggplot(data = data3, aes(x = "", y = value, fill = group)) +
 
 ```
 
-Thống kê OS:
+## Thống kê OS:
+
+Theo tất cả:
 
 ```{r}
 data_temp = as.data.frame(table(data$OS))
 colnames(data_temp) <- c("OS","n")
 ggplot(data = data_temp,aes(x=OS,y=n))+
-  geom_bar(stat = "identity")
+  geom_bar(stat = "identity",fill = rainbow(7))
+```
+
+Thống kê giá theo hãng điện thoại:
+
+```{r}
+plot<-data %>%
+  mutate(data = fct_reorder(Brand, Price, .fun='median')) %>%
+  ggplot(aes(y=reorder(Brand, Price), x=Price, fill=Brand)) + 
+    geom_boxplot() +
+    xlab("Brand") +
+    theme(legend.position="none",axis.text.y.left = element_text(size = 5))
+plot
+```
+
+Thống kê giá theo hệ điều hành:
+
+```{r}
+plot<-data %>%
+  mutate(data = fct_reorder(OS, Price, .fun='median')) %>%
+  ggplot(aes(y=reorder(OS, Price), x=Price, fill=OS)) + 
+    geom_boxplot() +
+  xlab("Price")+
+    ylab("OS") +
+    theme(legend.position="none",axis.text.y.left = element_text(size = 5))
+plot
 ```
 
 # Phần 3: Kiểm định giả thuyết:
