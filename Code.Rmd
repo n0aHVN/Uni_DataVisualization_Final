@@ -91,7 +91,7 @@ any(is.na(data[1:nrow(data),]))
 
 ```
 
-# Phần 2: Mô hình hoá dữ liệu:
+# Phần 2: Trực quan hoá dữ liệu:
 
 ## Số lượng điện thoại:
 
@@ -102,31 +102,54 @@ colnames(brand_numOfPhone)<-c("brand","numOfPhone")
 plot<-ggplot(data = brand_numOfPhone[0:35,]) +
   geom_col(mapping = aes(y = brand, x=numOfPhone),fill = "#0099f9")+
   labs(
-    x = "Hãng Điện Thoại",
-    y = "Số Lương")
+    y = "Hãng Điện Thoại",
+    x = "Số Lương")
 plot
 
 plot<-ggplot(data = brand_numOfPhone[36:76,]) +
   geom_col(mapping = aes(y = brand, x=numOfPhone),fill = "#0099f9")+
   labs(
-    x = "Hãng Điện Thoại",
-    y = "Số Lương")
+    y = "Hãng Điện Thoại",
+    x = "Số Lương")
 plot
 ```
 
-## Thống kê lượng pin mỗi hãng:
+## Thống kê lượng pin:
+
+Thống kê lượng pin trung bình:
+
+```{r}
+plot<-data%>%
+  ggplot(aes(,Battery)) +
+  geom_boxplot() +
+  theme(legend.position="none",axis.text.y.left = element_text(size = 5))
+plot
+```
+
+Thống kê lượng pin cho mỗi hãng:
 
 ```{r}
 plot<-data %>%
   mutate(data = fct_reorder(Brand, Battery, .fun='median')) %>%
   ggplot(aes(y=reorder(Brand, Battery), x=Battery, fill=Brand)) + 
     geom_boxplot() +
-    xlab("Brand") +
+    ylab("Brand") +
+    xlab("Battery")+
     theme(legend.position="none",axis.text.y.left = element_text(size = 5))
 plot
 ```
 
-## Thống kê kích thước màn hình
+## Thống kê kích thước màn hình:
+
+Tất cả:
+
+```{r}
+plot<-data%>%
+  ggplot(aes(,Screensize)) +
+  geom_boxplot() +
+  theme(legend.position="none",axis.text.y.left = element_text(size = 5))
+plot
+```
 
 ```{r, echo=FALSE}
 plot<-data %>%
@@ -134,7 +157,7 @@ plot<-data %>%
   ggplot(aes(y=reorder(Brand, Screensize), x=Screensize, fill=Brand)) + 
     geom_boxplot() +
     xlab("Brand") +
-    theme(legend.position="none")
+    theme(legend.position="none",axis.text.y.left = element_text(size = 5))
 plot
 ```
 
@@ -142,9 +165,6 @@ plot
 data_temp<-as.data.frame(table(data$Touchscreen))
 pie(table(data$Touchscreen),main = "Thống kê lượng điện thoại có màn hình cảm ứng",labels = data_temp$Freq,col = rainbow(2))
 legend("topright",c("Yes","No"),fill = rainbow(2))
-```
-
-``` {)}
 ```
 
 ```{r, echo=FALSE}
@@ -192,6 +212,19 @@ ggplot(data = data3, aes(x = "", y = value, fill = group)) +
   theme_void() +
   labs(title = '4G/LITE Statistic', caption = "Many device don't support 4G/LITE") +
   scale_fill_discrete(name = "Category")
+```
+
+```{r}
+
+```
+
+Thống kê OS:
+
+```{r}
+data_temp = as.data.frame(table(data$OS))
+colnames(data_temp) <- c("OS","n")
+ggplot(data = data_temp,aes(x=OS,y=n))+
+  geom_bar(stat = "identity")
 ```
 
 # Phần 3: Kiểm định giả thuyết:
@@ -517,7 +550,7 @@ for (i in 1:length(brand))
 {
   numOfPhone<-append(numOfPhone,nrow(filter(data,data$Brand ==brand[i])))
 }
-
+# Lọc những điện thoại có số lượng > 18
 brand_numOfPhone <-data.frame(brand,numOfPhone)
 brand_numOfPhone<-brand_numOfPhone%>%filter(numOfPhone>18)
 
@@ -530,6 +563,7 @@ Cùng xem lại new_data sau khi chuyển đổi:
 
 ```{r}
 head(new_data,10)
+unique(new_data$Brand)
 ```
 
 **Mô hình hồi qui tuyến tính cho tất cả hãng:**
