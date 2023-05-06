@@ -121,16 +121,19 @@ Thống kê lượng pin trung bình:
 ```{r}
 plot<-data%>%
   ggplot(aes(,Battery)) +
-  geom_boxplot() +
+  geom_boxplot(fill = "blue") +
+  stat_summary(mapping = aes(0,mean(data$Battery)),fun = mean,geom = "point", col = "red",size = 2)+
   theme(legend.position="none",axis.text.y.left = element_text(size = 5))
 plot
 ```
 
 Thống kê lượng pin cho mỗi hãng:
 
+![](http://127.0.0.1:33871/chunk_output/21199BA56d60a2cf/C5935EAE/cwwi3paez812t/000014.png)
+
 ```{r}
 plot<-data %>%
-  mutate(data = fct_reorder(Brand, Battery, .fun='median')) %>%
+  mutate(data = fct_reorder(Brand, Battery, .fun='mean')) %>%
   ggplot(aes(y=reorder(Brand, Battery), x=Battery, fill=Brand)) + 
     geom_boxplot() +
     ylab("Brand") +
@@ -146,7 +149,8 @@ Tất cả:
 ```{r}
 plot<-data%>%
   ggplot(aes(,Screensize)) +
-  geom_boxplot() +
+  geom_boxplot(fill="red") +
+  stat_summary(mapping = aes(0,mean(data$Screensize)),fun = mean,geom = "point", col = "blue",size = 2)+
   theme(legend.position="none",axis.text.y.left = element_text(size = 5))
 plot
 ```
@@ -217,7 +221,14 @@ ggplot(data = data3, aes(x = "", y = value, fill = group)) +
 ```
 
 ```{r}
+ggplot() +
+  geom_bar(data = data1,mapping = aes(x = data$NumOfProcessor, fill = rainbow(3))) +
+  coord_polar() +
+  xlab('NumOfProcessor') +
+  ylab('Range') +
+  ggtitle(label = 'Statistic of INumOfProcessor') +
 
+  scale_fill_discrete(name = "Category IS")
 ```
 
 ## Thống kê OS:
@@ -254,6 +265,10 @@ plot<-data %>%
     ylab("OS") +
     theme(legend.position="none",axis.text.y.left = element_text(size = 5))
 plot
+```
+
+```{r}
+quantile(data$Screensize)
 ```
 
 # Phần 3: Kiểm định giả thuyết:
