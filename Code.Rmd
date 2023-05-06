@@ -23,12 +23,11 @@ library(dplyr)
 # **Danh sách thành viên:**
 
 ```{r,echo=FALSE}
-DSThanhVien <-data.frame("STT" = c(9,10,30),
-                         "Name" = c("Nguyễn Trí Dũng","Lê Minh Đăng","Nguyễn Khoa Quang Thắng"),
-                         "MSSV"=c("20133029","20133034","20133090"),
+DSThanhVien <-data.frame("STT" = c(9,30),
+                         "Name" = c("Nguyễn Trí Dũng","Nguyễn Khoa Quang Thắng"),
+                         "MSSV"=c("20133029","20133090"),
                          stringsAsFactors = FALSE
 )
-
 kable(DSThanhVien)
 ```
 
@@ -221,14 +220,6 @@ ggplot(data = data3, aes(x = "", y = value, fill = group)) +
 ```
 
 ```{r}
-ggplot() +
-  geom_bar(data = data1,mapping = aes(x = data$NumOfProcessor, fill = rainbow(3))) +
-  coord_polar() +
-  xlab('NumOfProcessor') +
-  ylab('Range') +
-  ggtitle(label = 'Statistic of INumOfProcessor') +
-
-  scale_fill_discrete(name = "Category IS")
 ```
 
 ## Thống kê OS:
@@ -249,7 +240,8 @@ plot<-data %>%
   mutate(data = fct_reorder(Brand, Price, .fun='median')) %>%
   ggplot(aes(y=reorder(Brand, Price), x=Price, fill=Brand)) + 
     geom_boxplot() +
-    xlab("Brand") +
+    ylab("Brand") +
+    xlab("Price")+
     theme(legend.position="none",axis.text.y.left = element_text(size = 5))
 plot
 ```
@@ -922,7 +914,7 @@ tuneGrid<-expand.grid(k=seq(1,59, by=2))
 
 kNNModel<-train(Price~.,data = kNN_train_data, method = 'knn', 
                 preProcess = c('center','scale'), 
-                trControl = trainControl(method ='repeatedcv',number=10,repeats = 5),
+                trControl = trainControl(method ='repeatedcv',number=10),
                 tuneGrid = tuneGrid)
 
 qqnorm(resid(kNNModel))
@@ -995,3 +987,7 @@ k-NN:
 -   Trung bình squared error train data: 21176.589278802
 
 -   Trung bình squared error test data: 4603.73618181174
+
+```{r}
+expand.grid(k=seq(1,59, by=2))
+```
